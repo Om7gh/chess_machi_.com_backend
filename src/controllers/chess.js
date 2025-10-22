@@ -1,7 +1,6 @@
 const { v4: uuid } = require('uuid');
 const send = require('../utils/send');
 
-// --- In-memory state ---
 const rooms = {}; // { roomId: { players: [], board, currentTurn, turns, createdAt } }
 const players = new Map(); // playerId -> { connection, roomId, ip }
 
@@ -10,7 +9,7 @@ function chessHandler(connection, req) {
     const playerId = uuid();
 
     players.set(playerId, { connection, roomId: null, ip: clientIP });
-    console.log(`🧩 New connection [${playerId}] from ${clientIP}`);
+    console.log(`New connection [${playerId}] from ${clientIP}`);
 
     connection.on('message', (rawMsg) => {
         let msg;
@@ -42,7 +41,7 @@ function handleMessage(playerId, msg) {
         case 'chat':
             return handleChat(playerId, msg.text);
         default:
-            console.warn(`⚠️ Unknown message type: ${type}`);
+            console.warn(`Unknown message type: ${type}`);
             const player = players.get(playerId);
             if (player)
                 send(player.connection, {
