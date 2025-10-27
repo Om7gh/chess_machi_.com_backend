@@ -1,8 +1,7 @@
 const { v4: uuid } = require('uuid');
 const send = require('../utils/send');
-
-const rooms = {}; // { roomId: { players: [], board, currentTurn, turns, createdAt } }
-const players = new Map(); // playerId -> { connection, roomId, ip }
+const { handleMatchmaking, removeFromQueue } = require('./matchMaking');
+const { players, rooms } = require('../utils/state');
 
 function chessHandler(connection, req) {
     const clientIP = req.socket.remoteAddress;
@@ -32,10 +31,13 @@ function chessHandler(connection, req) {
 function handleMessage(playerId, msg) {
     const { type } = msg;
     switch (type) {
-        case 'create':
-            return createRoom(playerId);
-        case 'join':
-            return joinRoom(playerId, msg.roomId);
+        case 'matchmaking':
+            return handleMatchmaking(
+                playerId,
+                players.get(playerId).connection
+            );
+        case 'leaveMatchmaking':
+            return removeFromQueue(playerId);
         case 'syncBoard':
             return syncBoard(playerId, msg.board, msg.currentTurn, msg.turns);
         case 'chat':
@@ -48,81 +50,6 @@ function handleMessage(playerId, msg) {
                     type: 'error',
                     message: 'Unknown message type',
                 });
-    }
-}
-
-function createRoom(playerId) {
-    const player = players.get(playerId);
-    if (!player) return console.error('createRoom: Player not found');
-
-    const roomId = uuid();
-    rooms[roomId] = {
-        players: [{ playerId, connection: player.connection, team: 'WHITE' }],
-        board: null,
-        currentTurn: null,
-        turns: [],
-        createdAt: Date.now(),
-    };
-
-    player.roomId = roomId;
-
-    console.log(`🏠 Room created: ${roomId} by ${playerId}`);
-    send(player.connection, {
-        type: 'roomCreated',
-        roomId,
-        message: 'Room created. Share this ID to invite your opponent.',
-    });
-}
-
-function joinRoom(playerId, roomId) {
-    const player = players.get(playerId);
-    const room = rooms[roomId];
-
-    if (!player) return console.error('joinRoom: Player not found');
-    if (!room)
-        return send(player.connection, {
-            type: 'error',
-            message: 'Room not found',
-        });
-    if (room.players.length >= 2)
-        return send(player.connection, {
-            type: 'error',
-            message: 'Room is full',
-        });
-
-    const opponent = room.players[0];
-
-    room.players.push({
-        playerId,
-        connection: player.connection,
-        team: 'BLACK',
-    });
-    player.roomId = roomId;
-
-    console.log(`👥 Player ${playerId} joined room ${roomId}`);
-
-    send(player.connection, {
-        type: 'gameStart',
-        yourTeam: 'BLACK',
-        opponentConnected: true,
-        roomId,
-    });
-
-    send(opponent.connection, {
-        type: 'gameStart',
-        yourTeam: 'WHITE',
-        opponentConnected: true,
-        roomId,
-    });
-
-    if (room.board) {
-        send(player.connection, {
-            type: 'syncBoard',
-            board: room.board,
-            currentTurn: room.currentTurn,
-            turns: room.turns,
-            fromPlayer: opponent.playerId,
-        });
     }
 }
 
@@ -173,6 +100,8 @@ function handleDisconnect(playerId) {
 
     const { roomId } = player;
     players.delete(playerId);
+
+    removeFromQueue(playerId);
 
     if (!roomId) return;
 
