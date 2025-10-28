@@ -12,6 +12,11 @@ function handleMatchmaking(playerId, connection) {
 
     matchmakingQueue.push({ playerId, connection });
 
+    send(connection, {
+        type: 'enterMatchmaking',
+        gameOver: false, // Notify the client to reset gameOver state
+    });
+
     if (matchmakingQueue.length >= 2) {
         const player1 = matchmakingQueue.shift();
         const player2 = matchmakingQueue.shift();
