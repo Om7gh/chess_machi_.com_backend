@@ -3,6 +3,8 @@ const cors = require('@fastify/cors');
 const fastifyJwt = require('@fastify/jwt');
 const env = require('dotenv');
 const chessRoutes = require('./routes/chess.routes');
+const os = require('os');
+const dbPlugin = require('./database');
 const opt = {
     logger: {
         level: 'debug',
@@ -20,6 +22,8 @@ app.register(cors, {
     origin: '*',
 });
 
+// Register database plugin to decorate app with db and helpers
+app.register(dbPlugin);
 app.register(fastifyJwt, {
     secret: process.env.JWT_SECRET,
 });
@@ -30,8 +34,25 @@ app.register(chessRoutes);
 
 const start = async () => {
     try {
-        const addr = await app.listen({ port: process.env.PORT });
+        await app.ready();
+        app.ensureDefaultPlayers();
+        const port = Number(process.env.PORT) || 9000;
+        const host = process.env.HOST || '0.0.0.0';
+        const addr = await app.listen({ port, host });
         app.log.info(`🚀 Server is running on ${addr}`);
+        const nets = os.networkInterfaces();
+        const urls = [];
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name] || []) {
+                if (net.family === 'IPv4' && !net.internal) {
+                    urls.push(`ws://${net.address}:${port}/game/chess`);
+                }
+            }
+        }
+        if (urls.length) {
+            app.log.info('🌐 LAN WebSocket endpoints:');
+            urls.forEach((u) => app.log.info(`   → ${u}`));
+        }
     } catch (err) {
         app.log.error(err);
         process.exit(1);
@@ -39,3 +60,5 @@ const start = async () => {
 };
 
 start();
+
+module.exports = app;

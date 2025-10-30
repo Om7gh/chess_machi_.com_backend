@@ -2,7 +2,7 @@ const { v4: uuid } = require('uuid');
 const send = require('../utils/send');
 const { players, rooms } = require('../utils/state');
 
-const matchmakingQueue = [];
+const matchmakingQueue = []; // {playerId, player socket}
 
 function handleMatchmaking(playerId, connection) {
     if (matchmakingQueue.some((p) => p.playerId === playerId)) {
@@ -14,7 +14,7 @@ function handleMatchmaking(playerId, connection) {
 
     send(connection, {
         type: 'enterMatchmaking',
-        gameOver: false, // Notify the client to reset gameOver state
+        gameOver: false,
     });
 
     if (matchmakingQueue.length >= 2) {
@@ -48,10 +48,6 @@ function createMatch(player1, player2) {
 
     players.set(player1.playerId, { connection: player1.connection, roomId });
     players.set(player2.playerId, { connection: player2.connection, roomId });
-
-    console.log(
-        `Match created: Room ${roomId} with players ${player1.playerId} and ${player2.playerId}`
-    );
 
     send(player1.connection, {
         type: 'gameStart',
