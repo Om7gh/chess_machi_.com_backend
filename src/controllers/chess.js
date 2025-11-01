@@ -67,7 +67,13 @@ function handleMessage(app, playerId, msg) {
         case 'leaveMatchmaking':
             return removeFromQueue(playerId);
         case 'syncBoard':
-            return syncBoard(playerId, msg.board, msg.currentTurn, msg.turns);
+            return syncBoard(
+                playerId,
+                msg.board,
+                msg.currentTurn,
+                msg.turns,
+                msg.prevMove
+            );
         case 'chat':
             return handleChat(playerId, msg.text);
         case 'checkmate':

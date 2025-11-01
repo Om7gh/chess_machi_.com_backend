@@ -1,7 +1,7 @@
 const send = require('../utils/send');
 const { rooms, players } = require('../utils/state');
 
-function syncBoard(playerId, board, currentTurn, turns) {
+function syncBoard(playerId, board, currentTurn, turns, prevMove) {
     const player = players.get(playerId);
     if (!player || !player.roomId) return;
 
@@ -20,6 +20,7 @@ function syncBoard(playerId, board, currentTurn, turns) {
             currentTurn,
             turns,
             fromPlayer: playerId,
+            prevMove,
         });
     }
 }

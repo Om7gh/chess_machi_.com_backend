@@ -1,5 +1,12 @@
 const send = require('../utils/send');
-const { players, rooms, lastOpponents } = require('../utils/state');
+const { v4: uuid } = require('uuid');
+
+const {
+    players,
+    rooms,
+    lastOpponents,
+    pendingRematches,
+} = require('../utils/state');
 
 function startRematchBetween(aId, bId, requesterId) {
     const a = players.get(aId);
